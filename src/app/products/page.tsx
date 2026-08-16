@@ -1,9 +1,23 @@
-import { Plus } from 'lucide-react'
+import { Plus, Package, AlertTriangle, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
 import type { Product } from '@/lib/types'
+import {
+  PageHeader,
+  Button,
+  Badge,
+  TableWrapper,
+  CardContainer,
+  EmptyState,
+} from '@/components/ui/primitives'
 
 export const dynamic = 'force-dynamic'
+
+const categoryColors: Record<string, 'indigo' | 'purple' | 'blue'> = {
+  supplement: 'indigo',
+  accessory: 'purple',
+  equipment: 'blue',
+}
 
 export default async function ProductsPage() {
   const supabase = await createClient()
@@ -12,64 +26,104 @@ export default async function ProductsPage() {
     .select('id, name, category, cost_price, sell_price, stock, created_at')
     .order('name')
 
+  const totalProducts = products?.length ?? 0
+  const lowStockCount = (products ?? []).filter((p) => p.stock < 5).length
+  const totalValue = (products ?? []).reduce((s, p) => s + Number(p.sell_price) * p.stock, 0)
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Products / Inventory</h1>
-        <button
-          disabled
-          className="inline-flex cursor-not-allowed items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white opacity-60"
-        >
+      <PageHeader title="Products / Inventory" description={`${totalProducts} products in your inventory`}>
+        <Button disabled>
           <Plus className="h-4 w-4" /> Add Product
-        </button>
+        </Button>
+      </PageHeader>
+
+      {/* Summary */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <CardContainer className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <Package className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Total Products</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">{totalProducts}</p>
+          </div>
+        </CardContainer>
+        <CardContainer className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+            <AlertTriangle className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Low Stock Items</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">{lowStockCount}</p>
+          </div>
+        </CardContainer>
+        <CardContainer className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Inventory Value</p>
+            <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totalValue)}</p>
+          </div>
+        </CardContainer>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600">
-            <tr>
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium">Cost Price</th>
-              <th className="px-4 py-3 font-medium">Sell Price</th>
-              <th className="px-4 py-3 font-medium">Margin</th>
-              <th className="px-4 py-3 font-medium">Stock</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(products ?? []).length === 0 && (
+      <TableWrapper>
+        {(products ?? []).length === 0 ? (
+          <EmptyState
+            title="No products yet"
+            description="Add products to start tracking inventory and sales."
+            icon={Package}
+          />
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50/80 text-left text-xs uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-400">
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">No products yet</td>
+                <th className="px-4 py-3 font-semibold">Product</th>
+                <th className="px-4 py-3 font-semibold">Category</th>
+                <th className="px-4 py-3 font-semibold">Cost</th>
+                <th className="px-4 py-3 font-semibold">Sell Price</th>
+                <th className="px-4 py-3 font-semibold">Margin</th>
+                <th className="px-4 py-3 font-semibold">Stock</th>
               </tr>
-            )}
-            {(products as Product[] | null ?? [])?.map((p) => {
-              const margin = p.sell_price - p.cost_price
-              const marginPct = p.cost_price > 0 ? Math.round((margin / p.cost_price) * 100) : 0
-              const lowStock = p.stock < 5
-              return (
-                <tr key={p.id} className="border-t hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium">{p.name}</td>
-                  <td className="px-4 py-3 capitalize">{p.category}</td>
-                  <td className="px-4 py-3">{formatCurrency(p.cost_price)}</td>
-                  <td className="px-4 py-3">{formatCurrency(p.sell_price)}</td>
-                  <td className="px-4 py-3 text-emerald-700">
-                    {formatCurrency(margin)} <span className="text-xs text-slate-400">({marginPct}%)</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        lowStock ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'
-                      }`}
-                    >
-                      {p.stock} {lowStock ? '· Low' : 'in stock'}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {(products as Product[] | null ?? [])?.map((p) => {
+                const margin = p.sell_price - p.cost_price
+                const marginPct = p.cost_price > 0 ? Math.round((margin / p.cost_price) * 100) : 0
+                const lowStock = p.stock < 5
+                return (
+                  <tr key={p.id} className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/30">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800">
+                          <Package className="h-4 w-4 text-slate-500" />
+                        </div>
+                        <span className="font-medium text-slate-900 dark:text-white">{p.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge color={categoryColors[p.category] ?? 'slate'}>{p.category}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatCurrency(p.cost_price)}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-white">{formatCurrency(p.sell_price)}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(margin)}</span>
+                      <span className="ml-1 text-xs text-slate-400">({marginPct}%)</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge color={lowStock ? 'red' : 'slate'}>
+                        {p.stock} {lowStock ? '· Low' : 'in stock'}
+                      </Badge>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </TableWrapper>
     </div>
   )
 }

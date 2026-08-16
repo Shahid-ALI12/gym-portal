@@ -1,6 +1,21 @@
-import { Users, UserCheck, Wallet, TrendingUp } from 'lucide-react'
+import {
+  Users,
+  UserCheck,
+  Wallet,
+  TrendingUp,
+  ArrowUpRight,
+  CalendarClock,
+  Sparkles,
+} from 'lucide-react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Card } from '@/components/ui/card'
+import {
+  PageHeader,
+  CardContainer,
+  SectionTitle,
+  EmptyState,
+} from '@/components/ui/primitives'
 import { RevenueAreaChart, MemberGrowthLineChart } from '@/components/dashboard-charts'
 import { formatCurrency, formatMonth, formatDate } from '@/lib/utils'
 
@@ -30,7 +45,6 @@ export default async function DashboardPage() {
   monthStart.setDate(1)
   const ms = monthStart.toISOString()
 
-  // Payments this month (revenue) + expenses this month
   const [{ data: monthPayments }, { data: monthExpenses }] = await Promise.all([
     supabase
       .from('payments')
@@ -44,14 +58,12 @@ export default async function DashboardPage() {
   const monthlyExpense = (monthExpenses ?? []).reduce((s, e) => s + Number(e.amount), 0)
   const monthlyProfit = monthlyRevenue - monthlyExpense
 
-  // Recent payments (last 5) with member
   const { data: recentPayments } = await supabase
     .from('payments')
     .select('id, amount, payment_date, method, status, invoice_no, member:members(name)')
     .order('payment_date', { ascending: false })
     .limit(5)
 
-  // Members expiring in next 7 days
   const in7 = new Date()
   in7.setDate(in7.getDate() + 7)
   const { data: expiringSoon } = await supabase
@@ -61,7 +73,6 @@ export default async function DashboardPage() {
     .gte('expiry_date', monthStart.toISOString())
     .limit(5)
 
-  // Build revenue monthly series from payments
   const series = await monthlySeries()
   const { data: allPayments } = await supabase
     .from('payments')
@@ -81,7 +92,6 @@ export default async function DashboardPage() {
   }
   for (const row of series) row.profit = row.revenue - (expByMonth[row.month] ?? 0)
 
-  // Member growth (count created_at per month)
   const { data: allMembers } = await supabase.from('members').select('created_at')
   const growthSeries = series.map((s) => ({ month: s.month, members: 0 }))
   for (const m of allMembers ?? []) {
@@ -90,100 +100,159 @@ export default async function DashboardPage() {
     if (row) row.members += 1
   }
 
+  const methodColors: Record<string, string> = {
+    cash: 'bg-emerald-500',
+    card: 'bg-indigo-500',
+    online: 'bg-violet-500',
+    upi: 'bg-amber-500',
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <PageHeader
+        title="Dashboard"
+        description={`Welcome back — here's what's happening at your gym today.`}
+      >
+        <Link
+          href="/members/add"
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-indigo-600/20 transition-all hover:bg-indigo-700 hover:shadow-indigo-600/30"
+        >
+          <Sparkles className="h-4 w-4" /> Quick Add Member
+        </Link>
+      </PageHeader>
 
+      {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card title="Total Members" value={totalMembers ?? 0} icon={Users} color="blue" />
-        <Card title="Active Members" value={activeMembers ?? 0} icon={UserCheck} color="green" />
+        <Card title="Total Members" value={totalMembers ?? 0} icon={Users} color="blue" subtitle="All-time registered" />
+        <Card title="Active Members" value={activeMembers ?? 0} icon={UserCheck} color="green" subtitle="Currently enrolled" />
         <Card
           title="Monthly Revenue"
           value={formatCurrency(monthlyRevenue)}
           icon={Wallet}
           color="purple"
+          subtitle="This month so far"
         />
         <Card
           title="Monthly Profit"
           value={formatCurrency(monthlyProfit)}
           icon={TrendingUp}
           color={monthlyProfit >= 0 ? 'indigo' : 'red'}
+          subtitle={monthlyProfit >= 0 ? 'Net positive' : 'Net loss'}
         />
       </div>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">Revenue — Last 6 Months</h2>
+        <CardContainer>
+          <SectionTitle>Revenue — Last 6 Months</SectionTitle>
           <RevenueAreaChart data={series} />
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">Member Growth</h2>
+        </CardContainer>
+        <CardContainer>
+          <SectionTitle>Member Growth</SectionTitle>
           <MemberGrowthLineChart data={growthSeries} />
-        </div>
+        </CardContainer>
       </div>
 
+      {/* Tables */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Recent payments */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">Recent Payments</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-slate-500">
-                  <th className="pb-2 font-medium">Member</th>
-                  <th className="pb-2 font-medium">Amount</th>
-                  <th className="pb-2 font-medium">Date</th>
-                  <th className="pb-2 font-medium">Method</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(recentPayments ?? []).length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="py-4 text-center text-slate-400">No payments yet</td>
-                  </tr>
-                )}
-                {(recentPayments ?? []).map((p) => (
-                  <tr key={p.id} className="border-b last:border-0">
-                    <td className="py-2.5">{(p.member as unknown as { name?: string }[] | null)?.[0]?.name ?? '—'}</td>
-                    <td className="py-2.5">{formatCurrency(p.amount)}</td>
-                    <td className="py-2.5">{formatDate(p.payment_date)}</td>
-                    <td className="py-2.5 capitalize">{p.method}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <CardContainer>
+          <SectionTitle
+            action={
+              <Link
+                href="/payments"
+                className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+              >
+                View all <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            }
+          >
+            Recent Payments
+          </SectionTitle>
+          {(recentPayments ?? []).length === 0 ? (
+            <EmptyState title="No payments yet" description="Payments will appear here once recorded." icon={Wallet} />
+          ) : (
+            <div className="space-y-2">
+              {(recentPayments ?? []).map((p) => {
+                const memberName = (p.member as unknown as { name?: string }[] | null)?.[0]?.name ?? '—'
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 transition-colors hover:bg-slate-100/70 dark:border-slate-800 dark:bg-slate-800/30 dark:hover:bg-slate-800/60"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${methodColors[p.method] ?? 'bg-slate-500'}`}>
+                        {memberName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{memberName}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {formatDate(p.payment_date)} · <span className="capitalize">{p.method}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(p.amount)}</p>
+                      <span className={`text-[0.65rem] font-semibold uppercase ${p.status === 'paid' ? 'text-emerald-600 dark:text-emerald-400' : p.status === 'pending' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                        {p.status}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContainer>
 
         {/* Expiring soon */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">Expiring Soon (7 days)</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-slate-500">
-                  <th className="pb-2 font-medium">Member</th>
-                  <th className="pb-2 font-medium">Plan</th>
-                  <th className="pb-2 font-medium">Expiry</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(expiringSoon ?? []).length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="py-4 text-center text-slate-400">None expiring</td>
-                  </tr>
-                )}
-                {(expiringSoon ?? []).map((m) => (
-                  <tr key={m.id} className="border-b last:border-0">
-                    <td className="py-2.5">{m.name}</td>
-                    <td className="py-2.5">{(m.plan as unknown as { name?: string }[] | null)?.[0]?.name ?? '—'}</td>
-                    <td className="py-2.5">{formatDate(m.expiry_date)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <CardContainer>
+          <SectionTitle
+            action={
+              <Link
+                href="/members"
+                className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+              >
+                View all <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            }
+          >
+            Expiring Soon (7 days)
+          </SectionTitle>
+          {(expiringSoon ?? []).length === 0 ? (
+            <EmptyState title="None expiring" description="No memberships expiring this week." icon={CalendarClock} />
+          ) : (
+            <div className="space-y-2">
+              {(expiringSoon ?? []).map((m) => {
+                const planName = (m.plan as unknown as { name?: string }[] | null)?.[0]?.name ?? '—'
+                const expiry = new Date(m.expiry_date)
+                const today = new Date()
+                const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                return (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-amber-200/50 bg-amber-50/50 px-3 py-2.5 dark:border-amber-500/20 dark:bg-amber-500/5"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        <CalendarClock className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{m.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{planName}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                        {daysLeft}d left
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(m.expiry_date)}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContainer>
       </div>
     </div>
   )

@@ -1,6 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
+import { Sun, Moon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type Theme = 'light' | 'dark'
 
@@ -54,16 +56,15 @@ export function ThemeToggle() {
     <button
       aria-label="Toggle theme"
       onClick={toggle}
-      className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
+      className={cn(
+        'relative rounded-lg p-2 transition-colors',
+        'text-slate-400 hover:bg-white/10 hover:text-white'
+      )}
     >
       {theme === 'light' ? (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-        </svg>
+        <Moon className="h-[18px] w-[18px]" />
       ) : (
-        <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25M15.75 5.364L17.636 3.75M5.364 5.364L3.75 3.75M5.364 18.636L3.75 21M12 18.75V21m6.364-.386l-1.591-1.591M21 12h-2.25M12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" />
-        </svg>
+        <Sun className="h-[18px] w-[18px] text-amber-300" />
       )}
     </button>
   )
