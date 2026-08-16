@@ -64,6 +64,26 @@ export default function SalesPage() {
     setSubmitting(true)
     const supabase = createClient()
 
+    // 1) Atomic stock check + decrement: only succeeds if current stock >= qty.
+    //    .gte('stock', qty) makes the UPDATE conditional on sufficient stock,
+    //    preventing overselling under concurrent requests.
+    const { data: updated, error: stockError } = await supabase
+      .from('products')
+      .update({ stock: Math.max(0, selected.stock - qty) })
+      .eq('id', selected.id)
+      .gte('stock', qty)
+      .select('stock')
+      .single()
+
+    if (stockError || !updated) {
+      // Stock was insufficient OR race condition hit — refresh and notify
+      setToast({ msg: 'Insufficient stock — please refresh and try again', type: 'error' })
+      await refresh()
+      setSubmitting(false)
+      return
+    }
+
+    // 2) Insert the sale row now that stock has been decremented
     const { error: saleError } = await supabase.from('sales').insert({
       product_id: selected.id,
       qty,
@@ -72,13 +92,16 @@ export default function SalesPage() {
     })
 
     if (!saleError) {
-      const newStock = Math.max(0, selected.stock - qty)
-      await supabase.from('products').update({ stock: newStock }).eq('id', selected.id)
       setProductId('')
       setQty(1)
       await refresh()
       setToast({ msg: `Sale recorded — ${formatCurrency(total)}`, type: 'success' })
     } else {
+      // Rollback: restore the stock we decremented above
+      await supabase
+        .from('products')
+        .update({ stock: selected.stock })
+        .eq('id', selected.id)
       setToast({ msg: saleError.message, type: 'error' })
     }
     setSubmitting(false)

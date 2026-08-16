@@ -1,4 +1,5 @@
-import { Plus, Phone, Dumbbell } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Phone, Dumbbell, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -8,6 +9,7 @@ import {
   CardContainer,
   EmptyState,
 } from '@/components/ui/primitives'
+import { DeleteButton } from '@/components/ui/delete-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,32 +31,41 @@ export default async function TrainersPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Trainers" description={`${trainers?.length ?? 0} trainers on your team`}>
-        <Button disabled>
-          <Plus className="h-4 w-4" /> Add Trainer
-        </Button>
+        <Link href="/trainers/add">
+          <Button>
+            <Plus className="h-4 w-4" /> Add Trainer
+          </Button>
+        </Link>
       </PageHeader>
 
       {(trainers ?? []).length === 0 ? (
         <CardContainer>
           <EmptyState
             title="No trainers yet"
-            description="Trainers you add will appear here as cards."
+            description="Add trainers to assign them to your members."
             icon={Dumbbell}
           />
         </CardContainer>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(trainers ?? []).map((t, idx) => (
-            <CardContainer key={t.id} hover className="overflow-hidden p-0">
+            <CardContainer key={t.id} hover className="group relative overflow-hidden p-0">
               {/* Gradient header */}
               <div className={`relative h-20 bg-gradient-to-r ${colors[idx % colors.length]}`}>
                 <div className="absolute -bottom-6 left-5 flex h-14 w-14 items-center justify-center rounded-xl border-4 border-white bg-white text-lg font-bold text-slate-700 shadow-lg dark:border-slate-900 dark:bg-slate-800 dark:text-white">
                   {t.name.charAt(0).toUpperCase()}
                 </div>
-                <div className="absolute right-3 top-3">
-                  <Badge color={t.status === 'active' ? 'green' : 'slate'} className="bg-white/20 text-white backdrop-blur">
-                    {t.status}
-                  </Badge>
+                <div className="absolute right-3 top-3 flex items-center gap-1">
+                  <Link
+                    href={`/trainers/${t.id}/edit`}
+                    className="rounded-md bg-white/20 p-1.5 text-white backdrop-blur transition-colors hover:bg-white/30"
+                    aria-label="Edit"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Link>
+                  <div className="rounded-md bg-white/20 p-1.5 text-white backdrop-blur transition-colors hover:bg-white/30">
+                    <DeleteButton table="trainers" id={t.id} />
+                  </div>
                 </div>
               </div>
 
@@ -74,6 +85,7 @@ export default async function TrainersPage() {
                     <p className="text-xs text-slate-400">Monthly Salary</p>
                     <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(t.salary ?? 0)}</p>
                   </div>
+                  <Badge color={t.status === 'active' ? 'green' : 'slate'}>{t.status}</Badge>
                 </div>
               </div>
             </CardContainer>

@@ -1,4 +1,5 @@
-import { Plus, Calendar, Check, Star } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Calendar, Check, Star, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
 import type { Plan } from '@/lib/types'
@@ -8,6 +9,7 @@ import {
   CardContainer,
   EmptyState,
 } from '@/components/ui/primitives'
+import { DeleteButton } from '@/components/ui/delete-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,9 +27,11 @@ export default async function PlansPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Membership Plans" description={`${plans?.length ?? 0} plans available for members`}>
-        <Button disabled>
-          <Plus className="h-4 w-4" /> Add Plan
-        </Button>
+        <Link href="/plans/add">
+          <Button>
+            <Plus className="h-4 w-4" /> Add Plan
+          </Button>
+        </Link>
       </PageHeader>
 
       {(plans ?? []).length === 0 ? (
@@ -41,7 +45,7 @@ export default async function PlansPage() {
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {(plans as Plan[] | null ?? [])?.map((p, idx) => {
-            const isFeatured = idx === 1 // Highlight the middle plan
+            const isFeatured = idx === 1
             return (
               <CardContainer
                 key={p.id}
@@ -53,6 +57,27 @@ export default async function PlansPage() {
                     <Star className="h-3 w-3 fill-white" /> Popular
                   </div>
                 )}
+
+                {/* Action buttons */}
+                <div className="absolute right-4 top-4 z-10 flex items-center gap-1">
+                  {!isFeatured && (
+                    <Link
+                      href={`/plans/${p.id}/edit`}
+                      className="rounded-md bg-white/80 p-1.5 text-slate-500 backdrop-blur transition-colors hover:bg-white hover:text-indigo-600 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Link>
+                  )}
+                  {isFeatured && (
+                    <Link
+                      href={`/plans/${p.id}/edit`}
+                      className="rounded-md bg-white/80 p-1.5 text-slate-500 backdrop-blur transition-colors hover:bg-white hover:text-indigo-600 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Link>
+                  )}
+                  <DeleteButton table="plans" id={p.id} />
+                </div>
 
                 {/* Gradient top accent */}
                 <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${colors[idx % colors.length]}`} />

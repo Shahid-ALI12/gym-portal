@@ -1,4 +1,5 @@
-import { Plus, Package, AlertTriangle, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
+import { Plus, Package, AlertTriangle, TrendingUp, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency } from '@/lib/utils'
 import type { Product } from '@/lib/types'
@@ -10,6 +11,7 @@ import {
   CardContainer,
   EmptyState,
 } from '@/components/ui/primitives'
+import { DeleteButton } from '@/components/ui/delete-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,9 +35,11 @@ export default async function ProductsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Products / Inventory" description={`${totalProducts} products in your inventory`}>
-        <Button disabled>
-          <Plus className="h-4 w-4" /> Add Product
-        </Button>
+        <Link href="/products/add">
+          <Button>
+            <Plus className="h-4 w-4" /> Add Product
+          </Button>
+        </Link>
       </PageHeader>
 
       {/* Summary */}
@@ -86,6 +90,7 @@ export default async function ProductsPage() {
                 <th className="px-4 py-3 font-semibold">Sell Price</th>
                 <th className="px-4 py-3 font-semibold">Margin</th>
                 <th className="px-4 py-3 font-semibold">Stock</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -116,6 +121,18 @@ export default async function ProductsPage() {
                       <Badge color={lowStock ? 'red' : 'slate'}>
                         {p.stock} {lowStock ? '· Low' : 'in stock'}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/products/${p.id}/edit`}
+                          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10"
+                          aria-label="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                        <DeleteButton table="products" id={p.id} />
+                      </div>
                     </td>
                   </tr>
                 )

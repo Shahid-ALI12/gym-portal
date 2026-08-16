@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Plus, Receipt, TrendingDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -9,6 +10,7 @@ import {
   CardContainer,
   EmptyState,
 } from '@/components/ui/primitives'
+import { DeleteButton } from '@/components/ui/delete-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +29,6 @@ export default async function ExpensesPage() {
     .select('id, category, amount, date, description')
     .order('date', { ascending: false })
 
-  // This month's total
   const monthStart = new Date()
   monthStart.setDate(1)
   const ms = monthStart.toISOString()
@@ -36,7 +37,6 @@ export default async function ExpensesPage() {
     .reduce((s, e) => s + Number(e.amount), 0)
   const total = (expenses ?? []).reduce((s, e) => s + Number(e.amount), 0)
 
-  // Category breakdown
   const byCategory: Record<string, number> = {}
   for (const e of expenses ?? []) {
     byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.amount)
@@ -46,9 +46,11 @@ export default async function ExpensesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Expenses" description={`${expenses?.length ?? 0} expense records`}>
-        <Button disabled>
-          <Plus className="h-4 w-4" /> Add Expense
-        </Button>
+        <Link href="/expenses/add">
+          <Button>
+            <Plus className="h-4 w-4" /> Add Expense
+          </Button>
+        </Link>
       </PageHeader>
 
       {/* Summary */}
@@ -99,6 +101,7 @@ export default async function ExpensesPage() {
                 <th className="px-4 py-3 font-semibold">Amount</th>
                 <th className="px-4 py-3 font-semibold">Date</th>
                 <th className="px-4 py-3 font-semibold">Description</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -113,6 +116,11 @@ export default async function ExpensesPage() {
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatDate(e.date)}</td>
                   <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                     {e.description || <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end">
+                      <DeleteButton table="expenses" id={e.id} />
+                    </div>
                   </td>
                 </tr>
               ))}

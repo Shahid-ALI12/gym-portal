@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Plus, CreditCard, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -9,6 +10,7 @@ import {
   CardContainer,
   EmptyState,
 } from '@/components/ui/primitives'
+import { DeleteButton } from '@/components/ui/delete-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +34,6 @@ export default async function PaymentsPage() {
     .select('id, amount, payment_date, method, status, invoice_no, member:members(name)')
     .order('payment_date', { ascending: false })
 
-  // Summary stats
   const total = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0)
   const paidCount = (payments ?? []).filter((p) => p.status === 'paid').length
   const pendingCount = (payments ?? []).filter((p) => p.status === 'pending').length
@@ -40,9 +41,11 @@ export default async function PaymentsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Payments" description={`${payments?.length ?? 0} payment records`}>
-        <Button disabled>
-          <Plus className="h-4 w-4" /> Record Payment
-        </Button>
+        <Link href="/payments/record">
+          <Button>
+            <Plus className="h-4 w-4" /> Record Payment
+          </Button>
+        </Link>
       </PageHeader>
 
       {/* Summary cards */}
@@ -93,6 +96,7 @@ export default async function PaymentsPage() {
                 <th className="px-4 py-3 font-semibold">Method</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Invoice</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -116,6 +120,11 @@ export default async function PaymentsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className="font-mono text-xs text-slate-500">{p.invoice_no ?? '—'}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        <DeleteButton table="payments" id={p.id} />
+                      </div>
                     </td>
                   </tr>
                 )

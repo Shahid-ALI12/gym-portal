@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus, Users, Phone, Search } from 'lucide-react'
+import { Plus, Users, Phone, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import {
@@ -9,6 +9,7 @@ import {
   TableWrapper,
   EmptyState,
 } from '@/components/ui/primitives'
+import { DeleteButton } from '@/components/ui/delete-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +55,7 @@ export default async function MembersPage() {
                 <th className="px-4 py-3 font-semibold">Join Date</th>
                 <th className="px-4 py-3 font-semibold">Expiry</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -99,6 +101,18 @@ export default async function MembersPage() {
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{formatDate(m.expiry_date)}</td>
                     <td className="px-4 py-3">
                       <Badge color={statusColors[m.status] ?? 'slate'}>{m.status}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/members/${m.id}/edit`}
+                          className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-500/10"
+                          aria-label="Edit"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                        <DeleteButton table="members" id={m.id} />
+                      </div>
                     </td>
                   </tr>
                 )
