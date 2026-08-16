@@ -138,3 +138,35 @@ ON CONFLICT DO NOTHING;
 
 INSERT INTO settings (id, gym_name) VALUES (1, 'My Gym')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ============================================================
+-- Prototype mode: permissive policies taake anon key
+-- bina auth ke CRUD kar sake. Production mein auth.uid()
+-- based policies se replace karein.
+-- ============================================================
+
+ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "plans_all" ON plans FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE trainers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "trainers_all" ON trainers FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "members_all" ON members FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "payments_all" ON payments FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "products_all" ON products FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "sales_all" ON sales FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "expenses_all" ON expenses FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "settings_all" ON settings FOR ALL USING (true) WITH CHECK (true);
