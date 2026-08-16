@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-provider'
 
 const nav = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,13 +45,16 @@ export function Sidebar() {
       {/* Mobile top bar */}
       <div className="sticky top-0 z-30 flex h-14 items-center justify-between bg-slate-900 px-4 text-white lg:hidden">
         <span className="text-lg font-bold">Gym Portal</span>
-        <button
-          aria-label="Toggle menu"
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-md p-2 hover:bg-slate-700"
-        >
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button
+            aria-label="Toggle menu"
+            onClick={() => setOpen((v) => !v)}
+            className="rounded-md p-2 hover:bg-slate-700"
+          >
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile overlay */}
@@ -64,7 +68,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 transform border-r border-slate-700 bg-slate-900 text-white transition-transform duration-200 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 w-64 transform border-r border-slate-700 bg-slate-900 text-white transition-transform duration-200 lg:translate-x-0 relative',
           open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -93,6 +97,11 @@ export function Sidebar() {
             )
           })}
         </nav>
+
+        {/* Theme toggle at bottom */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+          <ThemeToggle />
+        </div>
       </aside>
     </>
   )
