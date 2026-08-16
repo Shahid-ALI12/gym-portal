@@ -8,7 +8,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import { Card } from '@/components/ui/card'
 import {
   PageHeader,
@@ -32,12 +32,12 @@ async function monthlySeries() {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
+  const { supabase, gymId } = await getGymScopedClient()
 
   // Counts
   const [{ count: totalMembers }, { count: activeMembers }] = await Promise.all([
-    supabase.from('members').select('*', { count: 'exact', head: true }),
-    supabase.from('members').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('gym_id', gymId),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('status', 'active'),
   ])
 
   // Current month boundaries
@@ -49,9 +49,10 @@ export default async function DashboardPage() {
     supabase
       .from('payments')
       .select('amount')
+      .eq('gym_id', gymId)
       .eq('status', 'paid')
       .gte('payment_date', ms),
-    supabase.from('expenses').select('amount').gte('date', ms),
+    supabase.from('expenses').select('amount').eq('gym_id', gymId).gte('date', ms),
   ])
 
   const monthlyRevenue = (monthPayments ?? []).reduce((s, p) => s + Number(p.amount), 0)
@@ -61,6 +62,7 @@ export default async function DashboardPage() {
   const { data: recentPayments } = await supabase
     .from('payments')
     .select('id, amount, payment_date, method, status, invoice_no, member:members(name)')
+    .eq('gym_id', gymId)
     .order('payment_date', { ascending: false })
     .limit(5)
 
@@ -69,6 +71,7 @@ export default async function DashboardPage() {
   const { data: expiringSoon } = await supabase
     .from('members')
     .select('id, name, phone, expiry_date, plan:plans(name)')
+    .eq('gym_id', gymId)
     .lte('expiry_date', in7.toISOString())
     .gte('expiry_date', monthStart.toISOString())
     .limit(5)
@@ -77,9 +80,10 @@ export default async function DashboardPage() {
   const { data: allPayments } = await supabase
     .from('payments')
     .select('amount, payment_date, status')
+    .eq('gym_id', gymId)
     .eq('status', 'paid')
 
-  const { data: allExpenses } = await supabase.from('expenses').select('amount, date')
+  const { data: allExpenses } = await supabase.from('expenses').select('amount, date').eq('gym_id', gymId)
 
   for (const p of allPayments ?? []) {
     const row = series.find((s) => s.month === formatMonth(p.payment_date))
@@ -92,7 +96,7 @@ export default async function DashboardPage() {
   }
   for (const row of series) row.profit = row.revenue - (expByMonth[row.month] ?? 0)
 
-  const { data: allMembers } = await supabase.from('members').select('created_at')
+  const { data: allMembers } = await supabase.from('members').select('created_at').eq('gym_id', gymId)
   const growthSeries = series.map((s) => ({ month: s.month, members: 0 }))
   for (const m of allMembers ?? []) {
     const mo = formatMonth(m.created_at)

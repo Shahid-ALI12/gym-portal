@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ShoppingCart, Package, Receipt, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Product } from '@/lib/types'
 import {
@@ -24,6 +25,7 @@ interface RecentSale {
 }
 
 export default function SalesPage() {
+  const { session } = useGymSession()
   const [products, setProducts] = useState<Product[]>([])
   const [recent, setRecent] = useState<RecentSale[]>([])
   const [productId, setProductId] = useState('')
@@ -32,8 +34,9 @@ export default function SalesPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
+    if (!session) return
     refresh()
-  }, [])
+  }, [session])
 
   useEffect(() => {
     if (!toast) return
@@ -42,12 +45,14 @@ export default function SalesPage() {
   }, [toast])
 
   async function refresh() {
+    if (!session) return
     const supabase = createClient()
     const [p, s] = await Promise.all([
-      supabase.from('products').select('*').order('name'),
+      supabase.from('products').select('*').eq('gym_id', session.gymId).order('name'),
       supabase
         .from('sales')
         .select('id, product_id, qty, total, sale_date, created_at, product:products(name)')
+        .eq('gym_id', session.gymId)
         .order('sale_date', { ascending: false })
         .limit(10),
     ])
@@ -60,7 +65,7 @@ export default function SalesPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selected || qty < 1) return
+    if (!selected || qty < 1 || !session) return
     setSubmitting(true)
     const supabase = createClient()
 
@@ -85,6 +90,7 @@ export default function SalesPage() {
 
     // 2) Insert the sale row now that stock has been decremented
     const { error: saleError } = await supabase.from('sales').insert({
+      gym_id: session.gymId,
       product_id: selected.id,
       qty,
       total,

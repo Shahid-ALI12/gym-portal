@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User, Calendar, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import type { Plan, Trainer, Member } from '@/lib/types'
 import {
   PageHeader,
@@ -18,6 +19,7 @@ import {
 export default function EditMemberPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
+  const { session } = useGymSession()
   const [member, setMember] = useState<Member | null>(null)
   const [plans, setPlans] = useState<Plan[]>([])
   const [trainers, setTrainers] = useState<Trainer[]>([])
@@ -28,11 +30,12 @@ export default function EditMemberPage() {
   const [joinDate, setJoinDate] = useState('')
 
   useEffect(() => {
+    if (!session) return
     const supabase = createClient()
     Promise.all([
-      supabase.from('members').select('*').eq('id', params.id).single(),
-      supabase.from('plans').select('*').order('price'),
-      supabase.from('trainers').select('*').eq('status', 'active').order('name'),
+      supabase.from('members').select('*').eq('id', params.id).eq('gym_id', session.gymId).single(),
+      supabase.from('plans').select('*').eq('gym_id', session.gymId).order('price'),
+      supabase.from('trainers').select('*').eq('gym_id', session.gymId).eq('status', 'active').order('name'),
     ]).then(([m, p, t]) => {
       if (m.data) {
         const mem = m.data as Member
@@ -47,7 +50,7 @@ export default function EditMemberPage() {
       if (t.data) setTrainers(t.data as Trainer[])
       setLoading(false)
     })
-  }, [params.id])
+  }, [params.id, session])
 
   const expiryDate = selectedPlan && joinDate
     ? new Date(new Date(joinDate).getTime() + selectedPlan.duration_days * 24 * 60 * 60 * 1000)

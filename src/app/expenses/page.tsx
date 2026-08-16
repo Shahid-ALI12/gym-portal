@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, Receipt, TrendingDown } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   PageHeader,
@@ -23,10 +23,11 @@ const categoryColors: Record<string, 'red' | 'amber' | 'indigo' | 'purple' | 'sl
 }
 
 export default async function ExpensesPage() {
-  const supabase = await createClient()
+  const { supabase, gymId } = await getGymScopedClient()
   const { data: expenses } = await supabase
     .from('expenses')
     .select('id, category, amount, date, description')
+    .eq('gym_id', gymId)
     .order('date', { ascending: false })
 
   const monthStart = new Date()

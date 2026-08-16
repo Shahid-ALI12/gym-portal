@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, Calendar, Check, Star, Pencil } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import { formatCurrency } from '@/lib/utils'
 import type { Plan } from '@/lib/types'
 import {
@@ -14,8 +14,8 @@ import { DeleteButton } from '@/components/ui/delete-button'
 export const dynamic = 'force-dynamic'
 
 export default async function PlansPage() {
-  const supabase = await createClient()
-  const { data: plans } = await supabase.from('plans').select('*').order('price')
+  const { supabase, gymId } = await getGymScopedClient()
+  const { data: plans } = await supabase.from('plans').select('*').eq('gym_id', gymId).order('price')
 
   const colors = [
     'from-indigo-500 to-violet-500',

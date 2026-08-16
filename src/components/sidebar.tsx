@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   Dumbbell as Logo,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-provider'
@@ -99,23 +100,36 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function BrandLogo() {
+function BrandLogo({ gymName, gymEmail }: { gymName?: string; gymEmail?: string }) {
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
+  }
+
   return (
-    <Link href="/" className="flex items-center gap-2.5 px-6 py-4">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-pink-500 shadow-lg shadow-indigo-500/30">
-        <Logo className="h-5 w-5 text-white" />
-      </div>
-      <div>
-        <p className="text-base font-bold leading-tight text-white">Gym Portal</p>
-        <p className="text-[0.65rem] font-medium uppercase tracking-wider text-slate-500">
-          Management Suite
-        </p>
-      </div>
-    </Link>
+    <div className="px-6 py-4">
+      <Link href="/" className="flex items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-pink-500 shadow-lg shadow-indigo-500/30">
+          <Logo className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-base font-bold leading-tight text-white">{gymName ?? 'Gym Portal'}</p>
+          <p className="truncate text-[0.65rem] font-medium uppercase tracking-wider text-slate-500">
+            {gymEmail ?? 'Management Suite'}
+          </p>
+        </div>
+      </Link>
+      <button
+        onClick={handleLogout}
+        className="mt-3 flex w-full items-center gap-2 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+      >
+        <LogOut className="h-3.5 w-3.5" /> Sign out
+      </button>
+    </div>
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ gymName, gymEmail }: { gymName?: string; gymEmail?: string }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -126,7 +140,7 @@ export function Sidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500">
             <Logo className="h-4 w-4 text-white" />
           </div>
-          <span className="text-base font-bold">Gym Portal</span>
+          <span className="text-base font-bold">{gymName ?? 'Gym Portal'}</span>
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />
@@ -156,7 +170,7 @@ export function Sidebar() {
         )}
       >
         <div className="hidden lg:block">
-          <BrandLogo />
+          <BrandLogo gymName={gymName} gymEmail={gymEmail} />
         </div>
 
         <div className="flex-1 overflow-y-auto">

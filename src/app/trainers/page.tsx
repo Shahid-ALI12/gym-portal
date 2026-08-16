@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, Phone, Dumbbell, Pencil } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import { formatCurrency } from '@/lib/utils'
 import {
   PageHeader,
@@ -14,10 +14,11 @@ import { DeleteButton } from '@/components/ui/delete-button'
 export const dynamic = 'force-dynamic'
 
 export default async function TrainersPage() {
-  const supabase = await createClient()
+  const { supabase, gymId } = await getGymScopedClient()
   const { data: trainers } = await supabase
     .from('trainers')
     .select('id, name, phone, specialization, salary, status')
+    .eq('gym_id', gymId)
     .order('created_at', { ascending: false })
 
   const colors = [

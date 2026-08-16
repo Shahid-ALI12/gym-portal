@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, CreditCard, Wallet } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   PageHeader,
@@ -28,10 +28,11 @@ const methodIcons: Record<string, string> = {
 }
 
 export default async function PaymentsPage() {
-  const supabase = await createClient()
+  const { supabase, gymId } = await getGymScopedClient()
   const { data: payments } = await supabase
     .from('payments')
     .select('id, amount, payment_date, method, status, invoice_no, member:members(name)')
+    .eq('gym_id', gymId)
     .order('payment_date', { ascending: false })
 
   const total = (payments ?? []).reduce((s, p) => s + Number(p.amount), 0)

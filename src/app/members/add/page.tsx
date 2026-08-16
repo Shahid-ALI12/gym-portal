@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, UserPlus, User, Phone, Calendar, Dumbbell, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import type { Plan, Trainer } from '@/lib/types'
 import { PageHeader, Button, CardContainer } from '@/components/ui/primitives'
 
 export default function AddMemberPage() {
   const router = useRouter()
+  const { session } = useGymSession()
   const [plans, setPlans] = useState<Plan[]>([])
   const [trainers, setTrainers] = useState<Trainer[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -17,15 +19,16 @@ export default function AddMemberPage() {
   const [joinDate, setJoinDate] = useState(new Date().toISOString().slice(0, 10))
 
   useEffect(() => {
+    if (!session) return
     const supabase = createClient()
     Promise.all([
-      supabase.from('plans').select('*').order('price'),
-      supabase.from('trainers').select('*').eq('status', 'active').order('name'),
+      supabase.from('plans').select('*').eq('gym_id', session.gymId).order('price'),
+      supabase.from('trainers').select('*').eq('gym_id', session.gymId).eq('status', 'active').order('name'),
     ]).then(([p, t]) => {
       if (p.data) setPlans(p.data)
       if (t.data) setTrainers(t.data)
     })
-  }, [])
+  }, [session])
 
   const expiryDate = selectedPlan && joinDate
     ? new Date(new Date(joinDate).getTime() + selectedPlan.duration_days * 24 * 60 * 60 * 1000)
@@ -35,6 +38,7 @@ export default function AddMemberPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!session) return
     setSubmitting(true)
     const fd = new FormData(e.currentTarget)
     const plan_id = (fd.get('plan_id') as string) || null
@@ -52,6 +56,7 @@ export default function AddMemberPage() {
 
     const supabase = createClient()
     const { error } = await supabase.from('members').insert({
+      gym_id: session.gymId,
       name: fd.get('name'),
       phone: fd.get('phone'),
       email: fd.get('email'),

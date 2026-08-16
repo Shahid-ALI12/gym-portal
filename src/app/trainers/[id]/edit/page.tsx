@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Dumbbell, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import type { Trainer } from '@/lib/types'
 import {
   PageHeader,
@@ -18,24 +19,27 @@ import {
 export default function EditTrainerPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
+  const { session } = useGymSession()
   const [trainer, setTrainer] = useState<Trainer | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!session) return
     const supabase = createClient()
     supabase
       .from('trainers')
       .select('*')
       .eq('id', params.id)
+      .eq('gym_id', session.gymId)
       .single()
       .then(({ data, error }) => {
         if (data) setTrainer(data as Trainer)
         else setError(error?.message ?? 'Trainer not found')
         setLoading(false)
       })
-  }, [params.id])
+  }, [params.id, session])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -53,6 +57,7 @@ export default function EditTrainerPage() {
         status: String(fd.get('status') ?? 'active'),
       })
       .eq('id', params.id)
+      .eq('gym_id', session!.gymId)
     setSubmitting(false)
     if (!error) router.push('/trainers')
     else setError(error.message)

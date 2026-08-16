@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Building2, MapPin, Phone, Mail, Coins, Save, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import type { Settings } from '@/lib/types'
 import {
   PageHeader,
@@ -12,30 +13,34 @@ import {
 } from '@/components/ui/primitives'
 
 export default function SettingsPage() {
+  const { session } = useGymSession()
   const [settings, setSettings] = useState<Partial<Settings>>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
+    if (!session) return
     const supabase = createClient()
     supabase
       .from('settings')
       .select('*')
-      .eq('id', 1)
+      .eq('gym_id', session.gymId)
       .single()
       .then(({ data }) => {
         setSettings(data ?? {})
         setLoading(false)
       })
-  }, [])
+  }, [session])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!session) return
     setSaving(true)
     setSaved(false)
     const fd = new FormData(e.currentTarget)
     const payload = {
+      gym_id: session.gymId,
       gym_name: String(fd.get('gym_name') ?? ''),
       address: String(fd.get('address') ?? ''),
       phone: String(fd.get('phone') ?? ''),
@@ -43,7 +48,8 @@ export default function SettingsPage() {
       currency: String(fd.get('currency') ?? ''),
     }
     const supabase = createClient()
-    const { error } = await supabase.from('settings').upsert({ id: 1, ...payload }).eq('id', 1)
+    // Upsert by gym_id (unique constraint)
+    const { error } = await supabase.from('settings').upsert(payload, { onConflict: 'gym_id' })
     setSaving(false)
     if (!error) {
       setSaved(true)

@@ -1,5 +1,5 @@
 import { BarChart3, DollarSign, Users, TrendingUp, Package } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import {
   RevenueExpenseBarChart,
   ProfitLineChart,
@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/card'
 export const dynamic = 'force-dynamic'
 
 export default async function StatsPage() {
-  const supabase = await createClient()
+  const { supabase, gymId } = await getGymScopedClient()
 
   const now = new Date()
   const months: { month: string; revenue: number; expenses: number; profit: number }[] = []
@@ -27,8 +27,8 @@ export default async function StatsPage() {
   }
 
   const [{ data: payments }, { data: expenses }] = await Promise.all([
-    supabase.from('payments').select('amount, payment_date, method, status').eq('status', 'paid'),
-    supabase.from('expenses').select('amount, date'),
+    supabase.from('payments').select('amount, payment_date, method, status').eq('gym_id', gymId).eq('status', 'paid'),
+    supabase.from('expenses').select('amount, date').eq('gym_id', gymId),
   ])
 
   const payByMethod: Record<string, number> = {}
@@ -50,9 +50,9 @@ export default async function StatsPage() {
   for (const row of months) row.profit = row.revenue - row.expenses
 
   const [{ count: active }, { count: expired }, { count: inactive }] = await Promise.all([
-    supabase.from('members').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    supabase.from('members').select('*', { count: 'exact', head: true }).eq('status', 'expired'),
-    supabase.from('members').select('*', { count: 'exact', head: true }).eq('status', 'inactive'),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('status', 'active'),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('status', 'expired'),
+    supabase.from('members').select('*', { count: 'exact', head: true }).eq('gym_id', gymId).eq('status', 'inactive'),
   ])
   const statusData = [
     { name: 'Active', value: active ?? 0 },
@@ -64,6 +64,7 @@ export default async function StatsPage() {
   const { data: sales } = await supabase
     .from('sales')
     .select('qty, product:products(name)')
+    .eq('gym_id', gymId)
     .order('sale_date', { ascending: false })
     .limit(100)
   const prodCounts: Record<string, number> = {}

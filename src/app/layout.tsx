@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Sidebar } from "@/components/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
+import { getSession } from "@/lib/auth/session";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -19,12 +21,19 @@ export const metadata: Metadata = {
   description: "Complete gym management portal — members, trainers, payments, inventory, sales and insights.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+export const dynamic = 'force-dynamic'
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const isConfigured =
     supabaseUrl &&
     supabaseUrl !== "your-supabase-url" &&
     !supabaseUrl.includes("your-");
+
+  // If not logged in as a gym owner, show config screen (covers both
+  // unconfigured and not-logged-in states)
+  const showConfigScreen = !isConfigured || !session || session.role !== 'gym'
 
   return (
     <html
@@ -34,50 +43,37 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full bg-[var(--background)] text-[var(--foreground)]">
         <ThemeProvider>
-          <Sidebar />
-          <div className="lg:pl-64">
-            <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-              {isConfigured ? (
-                <div className="animate-fade-in">{children}</div>
-              ) : (
-                <div className="flex min-h-[60vh] items-center justify-center">
-                  <div className="max-w-lg overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-lg dark:border-amber-500/30 dark:bg-slate-900">
-                    <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-6 py-4">
-                      <h1 className="text-lg font-bold text-white">
-                        ⚙️ Supabase Setup Required
-                      </h1>
-                      <p className="text-sm text-amber-50">
-                        Database is not configured yet. Follow these steps:
-                      </p>
-                    </div>
-                    <div className="p-6 text-left text-sm text-slate-700 dark:text-slate-300">
-                      <ol className="space-y-3">
-                        <li className="flex gap-3">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">1</span>
-                          <span>Create a Supabase project at <a href="https://supabase.com" className="font-medium text-indigo-600 underline dark:text-indigo-400" target="_blank" rel="noopener">supabase.com</a></span>
-                        </li>
-                        <li className="flex gap-3">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">2</span>
-                          <span>Run <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs dark:bg-slate-800">supabase/schema.sql</code> in Supabase SQL Editor</span>
-                        </li>
-                        <li className="flex gap-3">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">3</span>
-                          <span>Copy Project URL & anon key from Settings → API</span>
-                        </li>
-                        <li className="flex gap-3">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400">4</span>
-                          <span>Add to Vercel Environment Variables:</span>
-                        </li>
-                      </ol>
-                      <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-green-400">{`NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhb...`}</pre>
-                      <p className="mt-3 text-sm">5. Redeploy on Vercel</p>
-                    </div>
-                  </div>
+          {showConfigScreen ? (
+            <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
+              <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gym Portal Access</h1>
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  {!isConfigured
+                    ? 'Supabase is not configured yet. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.'
+                    : 'You must sign in as a gym owner to access the portal. If you are the platform admin, use the admin login.'}
+                </p>
+                <div className="mt-5 flex flex-col gap-2">
+                  <a href="/login" className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
+                    Gym Owner Login
+                  </a>
+                  <a href="/admin/login" className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+                    Super Admin Login
+                  </a>
                 </div>
-              )}
-            </main>
-          </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Sidebar gymName={session.gymName} gymEmail={session.email} />
+              <div className="lg:pl-64">
+                <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+                  <SubscriptionGate gymId={session.gymId}>
+                    <div className="animate-fade-in">{children}</div>
+                  </SubscriptionGate>
+                </main>
+              </div>
+            </>
+          )}
         </ThemeProvider>
       </body>
     </html>

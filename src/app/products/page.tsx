@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, Package, AlertTriangle, TrendingUp, Pencil } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import { formatCurrency } from '@/lib/utils'
 import type { Product } from '@/lib/types'
 import {
@@ -22,10 +22,11 @@ const categoryColors: Record<string, 'indigo' | 'purple' | 'blue'> = {
 }
 
 export default async function ProductsPage() {
-  const supabase = await createClient()
+  const { supabase, gymId } = await getGymScopedClient()
   const { data: products } = await supabase
     .from('products')
     .select('id, name, category, cost_price, sell_price, stock, created_at')
+    .eq('gym_id', gymId)
     .order('name')
 
   const totalProducts = products?.length ?? 0

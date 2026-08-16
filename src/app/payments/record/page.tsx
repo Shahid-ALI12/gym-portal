@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, CreditCard, Save, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import type { Member } from '@/lib/types'
 import {
   PageHeader,
@@ -17,6 +18,7 @@ import {
 
 export default function RecordPaymentPage() {
   const router = useRouter()
+  const { session } = useGymSession()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -24,16 +26,18 @@ export default function RecordPaymentPage() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
 
   useEffect(() => {
+    if (!session) return
     const supabase = createClient()
     supabase
       .from('members')
       .select('id, name, phone, status, plan:plans(name, price)')
+      .eq('gym_id', session.gymId)
       .order('name')
       .then(({ data }) => {
         setMembers((data ?? []) as unknown as Member[])
         setLoading(false)
       })
-  }, [])
+  }, [session])
 
   // Generate invoice number: INV-YYYYMMDD-RANDOM
   function generateInvoiceNo() {
@@ -45,6 +49,7 @@ export default function RecordPaymentPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!session) return
     setSubmitting(true)
     setError(null)
     const fd = new FormData(e.currentTarget)
@@ -56,6 +61,7 @@ export default function RecordPaymentPage() {
     }
     const supabase = createClient()
     const { error } = await supabase.from('payments').insert({
+      gym_id: session.gymId,
       member_id: memberId,
       amount: Number(fd.get('amount')) || 0,
       payment_date: String(fd.get('payment_date')) || new Date().toISOString().slice(0, 10),

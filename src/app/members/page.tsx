@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Plus, Users, Phone, Pencil } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { getGymScopedClient } from '@/lib/auth/scoped'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import {
   PageHeader,
@@ -20,10 +20,11 @@ const statusColors: Record<string, 'green' | 'red' | 'slate'> = {
 }
 
 export default async function MembersPage() {
-  const supabase = await createClient()
+  const { supabase, gymId } = await getGymScopedClient()
   const { data: members } = await supabase
     .from('members')
     .select('id, name, phone, join_date, expiry_date, status, plan:plans(name, price)')
+    .eq('gym_id', gymId)
     .order('created_at', { ascending: false })
 
   const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-blue-500']

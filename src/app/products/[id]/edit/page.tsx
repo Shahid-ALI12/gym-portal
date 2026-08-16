@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Package, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import type { Product } from '@/lib/types'
 import {
   PageHeader,
@@ -18,24 +19,27 @@ import {
 export default function EditProductPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
+  const { session } = useGymSession()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!session) return
     const supabase = createClient()
     supabase
       .from('products')
       .select('*')
       .eq('id', params.id)
+      .eq('gym_id', session.gymId)
       .single()
       .then(({ data, error }) => {
         if (data) setProduct(data as Product)
         else setError(error?.message ?? 'Product not found')
         setLoading(false)
       })
-  }, [params.id])
+  }, [params.id, session])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -53,6 +57,7 @@ export default function EditProductPage() {
         stock: Number(fd.get('stock')) || 0,
       })
       .eq('id', params.id)
+      .eq('gym_id', session!.gymId)
     setSubmitting(false)
     if (!error) router.push('/products')
     else setError(error.message)

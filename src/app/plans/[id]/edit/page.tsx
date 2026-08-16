@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import type { Plan } from '@/lib/types'
 import {
   PageHeader,
@@ -18,24 +19,27 @@ import {
 export default function EditPlanPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
+  const { session } = useGymSession()
   const [plan, setPlan] = useState<Plan | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!session) return
     const supabase = createClient()
     supabase
       .from('plans')
       .select('*')
       .eq('id', params.id)
+      .eq('gym_id', session.gymId)
       .single()
       .then(({ data, error }) => {
         if (data) setPlan(data as Plan)
         else setError(error?.message ?? 'Plan not found')
         setLoading(false)
       })
-  }, [params.id])
+  }, [params.id, session])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -52,6 +56,7 @@ export default function EditPlanPage() {
         description: String(fd.get('description') ?? '').trim(),
       })
       .eq('id', params.id)
+      .eq('gym_id', session!.gymId)
     setSubmitting(false)
     if (!error) router.push('/plans')
     else setError(error.message)

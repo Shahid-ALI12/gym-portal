@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Dumbbell, Save } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useGymSession } from '@/lib/auth/use-gym-session'
 import {
   PageHeader,
   Button,
@@ -16,16 +17,19 @@ import {
 
 export default function AddTrainerPage() {
   const router = useRouter()
+  const { session } = useGymSession()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (!session) return
     setSubmitting(true)
     setError(null)
     const fd = new FormData(e.currentTarget)
     const supabase = createClient()
     const { error } = await supabase.from('trainers').insert({
+      gym_id: session.gymId,
       name: String(fd.get('name') ?? '').trim(),
       phone: String(fd.get('phone') ?? '').trim(),
       specialization: String(fd.get('specialization') ?? '').trim(),
