@@ -1,85 +1,87 @@
 -- ============================================================
--- Gym Portal — Supabase Database Schema
+-- Gym Portal — COMPLETE SCHEMA SETUP (Fresh Project)
+-- ============================================================
+-- Naye Supabase project ke liye all-in-one script:
+--   1. uuid-ossp extension enable
+--   2. 8 tables create (plans, trainers, members, payments,
+--      products, sales, expenses, settings)
+--   3. Indexes
+--   4. Seed data (4 default plans + gym settings)
+--   5. RLS DISABLED (prototype ke liye easiest — no auth errors)
+-- ============================================================
+-- RUN: Supabase Dashboard → SQL Editor → New query → Paste → Run
 -- ============================================================
 
--- Enable extensions
+-- Step 1: Enable extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
--- 1. PLANS (Membership plans)
+-- Step 2: CREATE TABLES
 -- ============================================================
+
+-- 1. PLANS (Membership plans)
 CREATE TABLE IF NOT EXISTS plans (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
-  duration_days INT NOT NULL,      -- 30, 90, 180, 365
+  duration_days INT NOT NULL,
   price NUMERIC(10,2) NOT NULL,
   description TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================
 -- 2. TRAINERS
--- ============================================================
 CREATE TABLE IF NOT EXISTS trainers (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   phone TEXT DEFAULT '',
   specialization TEXT DEFAULT '',
   salary NUMERIC(10,2) DEFAULT 0,
-  status TEXT DEFAULT 'active',     -- active | inactive
+  status TEXT DEFAULT 'active',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================
 -- 3. MEMBERS
--- ============================================================
 CREATE TABLE IF NOT EXISTS members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   phone TEXT DEFAULT '',
   email TEXT DEFAULT '',
   address TEXT DEFAULT '',
-  gender TEXT DEFAULT 'male',       -- male | female
+  gender TEXT DEFAULT 'male',
   dob DATE,
   plan_id UUID REFERENCES plans(id) ON DELETE SET NULL,
   trainer_id UUID REFERENCES trainers(id) ON DELETE SET NULL,
   join_date DATE DEFAULT CURRENT_DATE,
   expiry_date DATE,
-  status TEXT DEFAULT 'active',      -- active | expired | inactive
+  status TEXT DEFAULT 'active',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================
--- 4. PAYMENTS (Fees collection)
--- ============================================================
+-- 4. PAYMENTS
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   amount NUMERIC(10,2) NOT NULL,
   payment_date DATE DEFAULT CURRENT_DATE,
-  method TEXT DEFAULT 'cash',        -- cash | card | online | upi
-  status TEXT DEFAULT 'paid',        -- paid | pending | refunded
+  method TEXT DEFAULT 'cash',
+  status TEXT DEFAULT 'paid',
   invoice_no TEXT,
   notes TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================
--- 5. PRODUCTS (Inventory — supplements, accessories)
--- ============================================================
+-- 5. PRODUCTS (Inventory)
 CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
-  category TEXT DEFAULT 'supplement', -- supplement | accessory | equipment
+  category TEXT DEFAULT 'supplement',
   cost_price NUMERIC(10,2) DEFAULT 0,
   sell_price NUMERIC(10,2) DEFAULT 0,
   stock INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================
--- 6. SALES (Product sales)
--- ============================================================
+-- 6. SALES
 CREATE TABLE IF NOT EXISTS sales (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -89,21 +91,17 @@ CREATE TABLE IF NOT EXISTS sales (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================
 -- 7. EXPENSES
--- ============================================================
 CREATE TABLE IF NOT EXISTS expenses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  category TEXT NOT NULL,             -- rent | salary | utilities | equipment | other
+  category TEXT NOT NULL,
   amount NUMERIC(10,2) NOT NULL,
   date DATE DEFAULT CURRENT_DATE,
   description TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ============================================================
 -- 8. SETTINGS (Gym info)
--- ============================================================
 CREATE TABLE IF NOT EXISTS settings (
   id INT PRIMARY KEY DEFAULT 1,
   gym_name TEXT DEFAULT 'My Gym',
@@ -115,7 +113,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- ============================================================
--- INDEXES (Performance)
+-- Step 3: INDEXES (Performance)
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_members_plan ON members(plan_id);
 CREATE INDEX IF NOT EXISTS idx_members_trainer ON members(trainer_id);
@@ -127,46 +125,44 @@ CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
 
 -- ============================================================
--- SEED DATA (Default plans + settings)
+-- Step 4: SEED DATA
 -- ============================================================
 INSERT INTO plans (name, duration_days, price, description) VALUES
-  ('Monthly',  30,  3000, '30 days membership'),
+  ('Monthly',   30,  3000, '30 days membership'),
   ('Quarterly', 90,  8000, '90 days membership'),
   ('Half-Year', 180, 15000, '180 days membership'),
-  ('Yearly',   365, 28000, '365 days membership')
+  ('Yearly',    365, 28000, '365 days membership')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO settings (id, gym_name) VALUES (1, 'My Gym')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
--- ROW LEVEL SECURITY (RLS) POLICIES
+-- Step 5: RLS — DISABLED (prototype ke liye)
 -- ============================================================
--- Prototype mode: permissive policies taake anon key
--- bina auth ke CRUD kar sake. Production mein auth.uid()
--- based policies se replace karein.
+-- RLS disable kar rahe hain taake bina auth ke direct
+-- INSERT/UPDATE/DELETE/SELECT sab chal jaye. Koi RLS
+-- policy error nahi aayega. Production mein auth add karke
+-- RLS enable karna aur auth.uid() based policies lagana.
 -- ============================================================
+ALTER TABLE plans DISABLE ROW LEVEL SECURITY;
+ALTER TABLE trainers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sales DISABLE ROW LEVEL SECURITY;
+ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
+ALTER TABLE settings DISABLE ROW LEVEL SECURITY;
 
-ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "plans_all" ON plans FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE trainers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "trainers_all" ON trainers FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE members ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "members_all" ON members FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "payments_all" ON payments FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "products_all" ON products FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "sales_all" ON sales FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "expenses_all" ON expenses FOR ALL USING (true) WITH CHECK (true);
-
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "settings_all" ON settings FOR ALL USING (true) WITH CHECK (true);
+-- ============================================================
+-- DONE! 
+-- ============================================================
+-- Ab tumhare Supabase project mein:
+--   ✅ 8 tables ready
+--   ✅ Indexes for performance
+--   ✅ 4 default plans (Monthly/Quarterly/Half-Year/Yearly)
+--   ✅ Default gym settings row
+--   ✅ RLS disabled — no permission errors
+--
+-- Next: Update .env.local with new project URL + anon key
+-- ============================================================
